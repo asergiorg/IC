@@ -141,9 +141,7 @@ static THD_FUNCTION(top, arg)
         float idleLoad = (100 * (float)idleThdLoad->ticksPerCycle) / accumTicks;
         float scaleFactor = (OBJECTIVE_LOAD - idleLoad) / 100;
         if (scaleFactor != 0) {
-          threadLoad[tid] += threadLoad[tid] * scaleFactor;
-          long il = random(11);
-          threadLoad[tid] += aleatoryLoads[il];
+          threadLoad[tid] += threadLoad[tid] * scaleFactor + aleatoryLoads[random(11)];
           if (threadLoad[tid] > maxThreadLoad[tid]) threadLoad[tid] = maxThreadLoad[tid];
         }
       }
