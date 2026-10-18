@@ -139,7 +139,7 @@ static THD_FUNCTION(top, arg)
       if (tid != NUM_THREADS - 1){
         threadLoad_t * idleThdLoad = &sysLoad.threadLoad[NUM_THREADS - 1];
         float idleLoad = (100 * (float)idleThdLoad->ticksPerCycle) / accumTicks;
-        float scaleFactor = (OBJECTIVE_LOAD - idleLoad) / 100;
+        float scaleFactor = (OBJECTIVE_LOAD - 1 + idleLoad) / 100;
         if (scaleFactor != 0) {
           threadLoad[tid] += threadLoad[tid] * scaleFactor + aleatoryLoads[random(11)];
           if (threadLoad[tid] > maxThreadLoad[tid]) threadLoad[tid] = maxThreadLoad[tid];
