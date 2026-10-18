@@ -1,15 +1,21 @@
 /* ======================================================================= *\
- *  Ejemplo ChibiOS-3
- *  Este ejemplo muestra cómo estimar la carga computacional de cada hebra
+ *                      Práctica 1 - Segunda parte
  *
- *  IMPORTANTE: en ChRt/src/rt/templates/chconf.h
- *    - CH_DBG_THREADS_PROFILING debe activarse (TRUE)
- *    - CH_CFG_NO_IDLE_THREAD debe activarse (TRUE)
+ * Objetivos principales:
+ * 1. Configurar un rango variable de las cargas de trabajo de cada hilo, de
+ * forma en que se respete la frecuencia de repetición de las hebras.
+ * 2. Aplicar ajuste dinámico de la carga de trabajo del sistema para alcanzar
+ * un pico oṕtimo del 85%, si se supera se disminuye la carga para mantener
+ * una carga lo más estable posible.
  *
- *  Requiere el uso de la librería ChRt de Bill Greiman
- *    https://github.com/greiman/ChRt
+ * Funcionalidades extra:
+ * E1. Añadir una carga extra de forma aleatoria para simular un comportamiento
+ * inesperado del sistema que provoca una regulación de la carga de trabajo de
+ * los hilos.
  *
- *  Asignatura (GII-IoT)
+ * Autores:
+ *          Ubay Antonio Batista Santana
+ *          Ángel Sergio Reyes Guedes
 \* ======================================================================= */
 
 #include <ChRt.h>
@@ -138,8 +144,8 @@ static THD_FUNCTION(top, arg)
 
       if (tid != NUM_THREADS - 1){
         threadLoad_t * idleThdLoad = &sysLoad.threadLoad[NUM_THREADS - 1];
-        float idleLoad = (100 * (float)idleThdLoad->ticksPerCycle) / accumTicks;
-        float scaleFactor = (OBJECTIVE_LOAD - 1 + idleLoad) / 100;
+        float idleLoad = ((float)idleThdLoad->ticksPerCycle) / accumTicks;
+        float scaleFactor = OBJECTIVE_LOAD - 1 + idleLoad;
         if (scaleFactor != 0) {
           threadLoad[tid] += threadLoad[tid] * scaleFactor + aleatoryLoads[random(11)];
           if (threadLoad[tid] > maxThreadLoad[tid]) threadLoad[tid] = maxThreadLoad[tid];
