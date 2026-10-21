@@ -49,7 +49,7 @@ char thread_name[NUM_THREADS][15] = {  "top",
 volatile uint32_t threadPeriod_ms[NUM_THREADS] = { CYCLE_MS, 200, 100, 200, 0 };
 volatile int threadLoad[NUM_THREADS] = {0, 50, 50, 50, 0};
 int minThreadLoad[NUM_THREADS] = {0, 50, 50, 50, 0};
-int maxThreadLoad[NUM_THREADS] = {0, 100, 100, 100, 0};
+int maxThreadLoad[NUM_THREADS] = {0, 50, 50, 50, 0};
 int aleatoryLoads[11] = {0, 0, 0, 0, 0, 20, 0, 40, 0, 0, 30};
 
 volatile uint32_t threadEffectivePeriod_ms[NUM_THREADS] = { 0, 0, 0, 0, 0 };
@@ -141,18 +141,31 @@ static THD_FUNCTION(top, arg)
       SerialUSB.print(threadCycle_ms[tid]);
       SerialUSB.print("  period(ms): ");
       SerialUSB.println(threadEffectivePeriod_ms[tid]);
-
-      if (tid != NUM_THREADS - 1){
-        threadLoad_t * idleThdLoad = &sysLoad.threadLoad[NUM_THREADS - 1];
-        float idleLoad = ((float)idleThdLoad->ticksPerCycle) / accumTicks;
-        float scaleFactor = OBJECTIVE_LOAD - 1 + idleLoad;
-        if (scaleFactor != 0) {
-          threadLoad[tid] += threadLoad[tid] * scaleFactor + aleatoryLoads[random(11)];
-          if (threadLoad[tid] > maxThreadLoad[tid]) threadLoad[tid] = maxThreadLoad[tid];
-        }
-      }
     }
     SerialUSB.println();
+
+    for (int tid = 1; tid < NUM_THREADS-1; tid++){
+      // Calculate the max value of the thread
+      if (threadLoad[tid] != 0){
+        float charge_per_iteration = (float)threadCycle_ms[tid] / (float)threadLoad[tid];
+        int period = (int)threadPeriod_ms[tid];
+        float margin = 0.9;
+  
+        int max = maxThreadLoad[tid];
+        if (charge_per_iteration > 0) max = (float)(period * margin) / (float)charge_per_iteration; 
+  
+        maxThreadLoad[tid] = max;
+      }
+
+      // Apply the increment
+      threadLoad_t * idleThdLoad = &sysLoad.threadLoad[NUM_THREADS - 1];
+      float idleLoad = ((float)idleThdLoad->ticksPerCycle) / accumTicks;
+      float scaleFactor = OBJECTIVE_LOAD - 1 + idleLoad;
+      if (scaleFactor != 0) {
+        threadLoad[tid] += threadLoad[tid] * scaleFactor + aleatoryLoads[random(11)];
+        if (threadLoad[tid] > maxThreadLoad[tid]) threadLoad[tid] = maxThreadLoad[tid];
+      }
+    }
 
     // Switch off the LED
     digitalWrite(LED_BUILTIN, LOW);
