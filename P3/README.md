@@ -4,11 +4,10 @@ El dispositivo supervisor enviará comandos a través del puerto serie al dispos
 error. El dispositivo supervisor aceptará comandos introducidos a través del monitor serial por el usuario, los interpretará y enviará el comando correspondiente al dispositivo sensor, esperando su respuesta, y mostrando a través del monitor serial el resultado de su ejecución.<br>
 El formato de los comandos a aceptar por el dispositivo supervisor serán cadenas escritas por el usuario. Al menos deben implementarse los siguientes comandos.
 - help: se muestra información acerca de los comandos aceptados y la operativa correcta del sistema.
-- us <srf02> {one-shot | on <period_ms> | off}: se comanda un único disparo del sensor de ultrasonidos (one-shot), o bien se establece que se dispare con un periodo específico de manera continuada (on <period_ms>), o que se cese de disparar el sensor de
-manera periódica si lo estuviera (off). En el comando debe identificarse qué sensor SRF02 quiere dispararse (<srf02>).
+- us <srf02> {one-shot | on <period_ms> | off}: se comanda un único disparo del sensor de ultrasonidos (one-shot), o bien se establece que se dispare con un periodo específico de manera continuada (on <period_ms>), o que se cese de disparar el sensor de manera periódica si lo estuviera (off). En el comando debe identificarse qué sensor SRF02 quiere dispararse (<srf02>).
 - us <srf02> unit {inc | cm | ms}: este comando permite modificar la unidad de medida devuelta por un sensor SRF02 específico (<srf02>).
 - us <srf02> delay <ms>: este comando establece el tiempo de espera o retardo mínimo que debe haber entre dos disparos consecutivos del sensor (<srf02>).
-- us <srf02> status: este comando debe proporcionar información de configuración del sensor, en concreto, su dirección I 2C, retardo mínimo entre disparos, su configuración de unidades de medida, y su estado de disparo periódico, en el caso de que éste esté activado o no.
+- us <srf02> status: este comando debe proporcionar información de configuración del sensor, en concreto, su dirección I2C, retardo mínimo entre disparos, su configuración de unidades de medida, y su estado de disparo periódico, en el caso de que éste esté activado o no.
 - us: este comando debe proporcionar la relación de sensores de ultrasonidos disponibles en el
 dispositivo sensor. <br>
 Todos estos comandos deben tener un mensaje de respuesta, o bien, de confirmación, o bien de
