@@ -18,9 +18,16 @@ y debe seguir el siguiente esquema:
 - primer byte: código de operación del mensaje, los valores específicos de este código de operación se dejan abiertos a los que quieran proponer.
 - resto de bytes del cuerpo del mensaje: se deja abierto al formato que quieran proponer.
 
-| 1 byte | resto de bytes |
-|:---:|:---:|
-| código | cuerpo del mensaje |
+<table border="1">
+  <tr>
+    <th>1 byte</th>
+    <th>resto de bytes</th>
+  </tr>
+  <tr>
+    <td>código</td>
+    <td>cuerpo del mensaje</td>
+  </tr>
+</table>
 
 ## Sugerencias y puntos de especial atención
 - Tengan en cuenta que los sensores de ultrasonidos cuándo se activen de manera periódica enviaran al supervisor de manera asíncrona mensajes con el periodo especificado, indicando la medida tomada en cada disparo. Esta información debe mostrarse en el supervisor, en el monitor serial, sin interferir con lo que en ese momento el supervisor esté realizando.

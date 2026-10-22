@@ -48,12 +48,13 @@ char thread_name[NUM_THREADS][15] = {  "top",
 
 volatile uint32_t threadPeriod_ms[NUM_THREADS] = { CYCLE_MS, 200, 100, 200, 0 };
 volatile int threadLoad[NUM_THREADS] = {0, 50, 50, 50, 0};
-int minThreadLoad[NUM_THREADS] = {0, 50, 50, 50, 0};
-int maxThreadLoad[NUM_THREADS] = {0, 50, 50, 50, 0};
+int minThreadLoad[NUM_THREADS] = {0, 1, 1, 1, 0};
+volatile int maxThreadLoad[NUM_THREADS] = {0, 50, 50, 50, 0};
 int aleatoryLoads[11] = {0, 0, 0, 0, 0, 20, 0, 40, 0, 0, 30};
 
 volatile uint32_t threadEffectivePeriod_ms[NUM_THREADS] = { 0, 0, 0, 0, 0 };
 volatile uint32_t threadCycle_ms[NUM_THREADS] = { 0, 0, 0, 0, 0 };
+volatile uint32_t maxPerThreadCycle_ms[NUM_THREADS] ={0, 0, 0, 0, 0};
 
 // Struct to measure the cpu load using the ticks consumed by each thread
 typedef struct {
@@ -147,14 +148,16 @@ static THD_FUNCTION(top, arg)
     for (int tid = 1; tid < NUM_THREADS-1; tid++){
       // Calculate the max value of the thread
       if (threadLoad[tid] != 0){
-        float charge_per_iteration = (float)threadCycle_ms[tid] / (float)threadLoad[tid];
-        int period = (int)threadPeriod_ms[tid];
+        threadLoad_t * currentThdLoad = &sysLoad.threadLoad[tid];
+        uint32_t ticks = (uint32_t)currentThdLoad->ticksPerCycle;
+        float period = (float)threadPeriod_ms[tid];
+        float charge_per_iteration = ((float)ticks / (1000/period)) / (float)threadLoad[tid];
         float margin = 0.9;
-  
-        int max = maxThreadLoad[tid];
-        if (charge_per_iteration > 0) max = (float)(period * margin) / (float)charge_per_iteration; 
-  
-        maxThreadLoad[tid] = max;
+
+        int maxOfCurrentThread = maxThreadLoad[tid];
+        if (charge_per_iteration > 0) maxOfCurrentThread = (float)(period * margin) / (float)charge_per_iteration;
+
+        maxThreadLoad[tid] = maxOfCurrentThread;
       }
 
       // Apply the increment
@@ -162,7 +165,7 @@ static THD_FUNCTION(top, arg)
       float idleLoad = ((float)idleThdLoad->ticksPerCycle) / accumTicks;
       float scaleFactor = OBJECTIVE_LOAD - 1 + idleLoad;
       if (scaleFactor != 0) {
-        threadLoad[tid] += threadLoad[tid] * scaleFactor + aleatoryLoads[random(11)];
+        threadLoad[tid] += threadLoad[tid] * scaleFactor;
         if (threadLoad[tid] > maxThreadLoad[tid]) threadLoad[tid] = maxThreadLoad[tid];
       }
     }
@@ -190,7 +193,7 @@ static THD_FUNCTION(worker, arg)
     systime_t beginTime_i = chVTGetSystemTimeX();
     threadEffectivePeriod_ms[worker_ID] = TIME_I2MS(beginTime_i - lastBeginTime_i);
 
-    int niter = threadLoad[worker_ID];
+    int niter = threadLoad[worker_ID] + aleatoryLoads[random(11)];
     #if USE_DOUBLE
       double num = 10;
     #else
@@ -216,6 +219,7 @@ static THD_FUNCTION(worker, arg)
 */
     lastBeginTime_i = beginTime_i;
     threadCycle_ms[worker_ID] = TIME_I2MS(chVTGetSystemTimeX() - beginTime_i);
+    if (threadCycle_ms[worker_ID] > maxPerThreadCycle_ms[worker_ID]) maxPerThreadCycle_ms[worker_ID] = threadCycle_ms[worker_ID];
     if (deadline_i > chVTGetSystemTimeX()) {
       chThdSleepUntil(deadline_i);
     }
