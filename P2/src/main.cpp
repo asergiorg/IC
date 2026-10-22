@@ -48,13 +48,14 @@ char thread_name[NUM_THREADS][15] = {  "top",
 
 volatile uint32_t threadPeriod_ms[NUM_THREADS] = { CYCLE_MS, 200, 100, 200, 0 };
 volatile int threadLoad[NUM_THREADS] = {0, 50, 50, 50, 0};
+
 int minThreadLoad[NUM_THREADS] = {0, 1, 1, 1, 0};
 volatile int maxThreadLoad[NUM_THREADS] = {0, 50, 50, 50, 0};
-int aleatoryLoads[11] = {0, 0, 0, 0, 0, 20, 0, 40, 0, 0, 30};
+int aleatoryLoads[24] = {0, 0, 0, 0, 0, 20, 0, 40, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+float utilization_share[NUM_THREADS] = {0, 0.30, 0.25, 0.30, 0};
 
 volatile uint32_t threadEffectivePeriod_ms[NUM_THREADS] = { 0, 0, 0, 0, 0 };
 volatile uint32_t threadCycle_ms[NUM_THREADS] = { 0, 0, 0, 0, 0 };
-volatile uint32_t maxPerThreadCycle_ms[NUM_THREADS] ={0, 0, 0, 0, 0};
 
 // Struct to measure the cpu load using the ticks consumed by each thread
 typedef struct {
@@ -120,11 +121,7 @@ static THD_FUNCTION(top, arg)
       threadLoad_t * thdLoad = &(sysLoad.threadLoad[tid]);
       thdLoad->lastSampleTime_i = lastTime_i;
       systime_t ticks = chThdGetTicksX(thdLoad->thd);
-/*
-      SerialUSB.print(tid);
-      SerialUSB.print(" ");
-      SerialUSB.println(ticks);
-*/
+
       thdLoad->ticksPerCycle = ticks - thdLoad->ticksTotal;
       thdLoad->ticksTotal = ticks;
       accumTicks += thdLoad->ticksPerCycle;
@@ -145,29 +142,63 @@ static THD_FUNCTION(top, arg)
     }
     SerialUSB.println();
 
+
+    float estimations[NUM_THREADS] = {0., 0., 0., 0., 0.};
+
+    // Estimate the charge per iteration
     for (int tid = 1; tid < NUM_THREADS-1; tid++){
-      // Calculate the max value of the thread
       if (threadLoad[tid] != 0){
-        threadLoad_t * currentThdLoad = &sysLoad.threadLoad[tid];
-        uint32_t ticks = (uint32_t)currentThdLoad->ticksPerCycle;
-        float period = (float)threadPeriod_ms[tid];
-        float charge_per_iteration = ((float)ticks / (1000/period)) / (float)threadLoad[tid];
-        float margin = 0.9;
-
-        int maxOfCurrentThread = maxThreadLoad[tid];
-        if (charge_per_iteration > 0) maxOfCurrentThread = (float)(period * margin) / (float)charge_per_iteration;
-
-        maxThreadLoad[tid] = maxOfCurrentThread;
+        float runsPerWindow = CYCLE_MS / (float)threadPeriod_ms[tid];
+        estimations[tid] = (float)sysLoad.threadLoad[tid].ticksPerCycle / runsPerWindow / threadLoad[tid];
       }
+    }
 
-      // Apply the increment
+    // Calculate the max value of the thread
+    for (int tid = 1; tid < NUM_THREADS-1; tid++){
+        int period = (int)threadPeriod_ms[tid];
+  
+        int max = maxThreadLoad[tid];
+        float cost = estimations[tid];
+        if (cost > 0) max = utilization_share[tid] * period / cost; 
+  
+        maxThreadLoad[tid] = max;
+    }
+
+    int nextLoads[NUM_THREADS] = {0, 0, 0, 0, 0};
+
+    // Calculate the next load
+    for (int tid = 1; tid < NUM_THREADS-1; tid++){
       threadLoad_t * idleThdLoad = &sysLoad.threadLoad[NUM_THREADS - 1];
       float idleLoad = ((float)idleThdLoad->ticksPerCycle) / accumTicks;
       float scaleFactor = OBJECTIVE_LOAD - 1 + idleLoad;
-      if (scaleFactor != 0) {
-        threadLoad[tid] += threadLoad[tid] * scaleFactor;
-        if (threadLoad[tid] > maxThreadLoad[tid]) threadLoad[tid] = maxThreadLoad[tid];
+      int load = threadLoad[tid] + threadLoad[tid] * scaleFactor;
+      load = (load < minThreadLoad[tid]) ? minThreadLoad[tid] : load;
+      load = (load > maxThreadLoad[tid]) ? maxThreadLoad[tid] : load;
+      nextLoads[tid] = load;
+    }
+
+    float worker1Load = (float)(nextLoads[1] * estimations[1]) / threadPeriod_ms[1];
+    float worker2Load = (float)(nextLoads[2] * estimations[2]) / threadPeriod_ms[2];
+    float worker3Load = (float)(nextLoads[3] * estimations[3]) / threadPeriod_ms[3]; 
+
+    // Satisfy period restriction
+    while((worker1Load + worker2Load + worker3Load) > OBJECTIVE_LOAD) {
+      float factor = OBJECTIVE_LOAD / (worker1Load + worker2Load + worker3Load);
+      for (int i=1; i < 4; i++){
+        int load = nextLoads[i] * factor;
+        load = (load < minThreadLoad[i]) ? minThreadLoad[i] : load;
+        nextLoads[i] = load;
+
       }
+
+      worker1Load = (float)(nextLoads[1] * estimations[1]) / threadPeriod_ms[1];
+      worker2Load = (float)(nextLoads[2] * estimations[2]) / threadPeriod_ms[2];
+      worker3Load = (float)(nextLoads[3] * estimations[3]) / threadPeriod_ms[3];
+    }
+
+    // Apply scale factor
+    for(int i = 1; i < 4; i++){
+      threadLoad[i] = nextLoads[i];
     }
 
     // Switch off the LED
@@ -193,7 +224,7 @@ static THD_FUNCTION(worker, arg)
     systime_t beginTime_i = chVTGetSystemTimeX();
     threadEffectivePeriod_ms[worker_ID] = TIME_I2MS(beginTime_i - lastBeginTime_i);
 
-    int niter = threadLoad[worker_ID] + aleatoryLoads[random(11)];
+    int niter = threadLoad[worker_ID] + aleatoryLoads[random(24)];
     #if USE_DOUBLE
       double num = 10;
     #else
@@ -210,16 +241,8 @@ static THD_FUNCTION(worker, arg)
 
     deadline_i += period_i;
 
-/*
-    SerialUSB.print(worker_ID);
-    SerialUSB.print(" ");
-    SerialUSB.print(deadline_i);
-    SerialUSB.print(" ");
-    SerialUSB.println(chVTGetSystemTimeX());
-*/
     lastBeginTime_i = beginTime_i;
     threadCycle_ms[worker_ID] = TIME_I2MS(chVTGetSystemTimeX() - beginTime_i);
-    if (threadCycle_ms[worker_ID] > maxPerThreadCycle_ms[worker_ID]) maxPerThreadCycle_ms[worker_ID] = threadCycle_ms[worker_ID];
     if (deadline_i > chVTGetSystemTimeX()) {
       chThdSleepUntil(deadline_i);
     }
