@@ -18,6 +18,7 @@
  *          Ángel Sergio Reyes Guedes
 \* ======================================================================= */
 
+#include <Arduino.h> 
 #include "config.h"
 #include "top.h"
 #include "worker.h"

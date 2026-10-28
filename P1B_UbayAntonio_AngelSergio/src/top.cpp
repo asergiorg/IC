@@ -102,7 +102,7 @@ THD_FUNCTION(top, arg) {
     float worker2Load = (float)(nextLoads[2] * estimations[2]) / threadPeriod_ms[2];
     float worker3Load = (float)(nextLoads[3] * estimations[3]) / threadPeriod_ms[3]; 
 
-    // Satisfy period restriction
+    // Satisfy load restriction
     while((worker1Load + worker2Load + worker3Load) > OBJECTIVE_LOAD) {
       float factor = OBJECTIVE_LOAD / (worker1Load + worker2Load + worker3Load);
       for (int i=1; i < 4; i++){
