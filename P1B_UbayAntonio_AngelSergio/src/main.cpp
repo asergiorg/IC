@@ -22,6 +22,7 @@
 #include "config.h"
 #include "top.h"
 #include "worker.h"
+#include "disturber.h"
 #include <math.h>
 
 //------------------------------------------------------------------------------
@@ -37,6 +38,11 @@ static THD_WORKING_AREA(waWorker1, 2048);
 static THD_WORKING_AREA(waWorker2, 2048);
 static THD_WORKING_AREA(waWorker3, 2048);
 
+//------------------------------------------------------------------------------
+// Disturber thread
+// Sleeps most of the time, uses a small working area to save memory
+//------------------------------------------------------------------------------
+static THD_WORKING_AREA(waDisturber, 1024);
 
 //------------------------------------------------------------------------------
 // Continue setup() after chBegin() and create the two threads
@@ -81,8 +87,13 @@ void chSetup()
   sysLoad.threadLoad[3].thd = chThdCreateStatic(waWorker3, sizeof(waWorker3),
                                                 NORMALPRIO + 1, worker, (void *)3);
 
+  // Start disturber thread
+  // It wakes up randomly to inject load spikes and test the dynamic load balancing
+  sysLoad.threadLoad[4].thd = chThdCreateStatic(waDisturber, sizeof(waDisturber),
+                                                NORMALPRIO, disturber, NULL);
+
   // This thread ID
-  sysLoad.threadLoad[4].thd = chThdGetSelfX();
+  sysLoad.threadLoad[5].thd = chThdGetSelfX();
 }
 
 //------------------------------------------------------------------------------

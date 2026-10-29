@@ -7,8 +7,8 @@
 #define USE_DOUBLE    TRUE   // Change to TRUE to use double precision (heavier)
 
 #define CYCLE_MS      1000
-#define NUM_THREADS   5  // Three working threads + loadEstimator (top) +
-                         // loop (as the idle thread)
+#define NUM_THREADS   6  // Three working threads + loadEstimator (top) +
+                         // disturber + loop (as the idle thread) 
                          // TOP thread is thread with id 0
 
 #define OBJECTIVE_LOAD 0.85
@@ -20,7 +20,7 @@ extern volatile int threadLoad[NUM_THREADS];
 
 extern int minThreadLoad[NUM_THREADS];
 extern volatile int maxThreadLoad[NUM_THREADS];
-extern int aleatoryLoads[24];
+extern volatile int currentExtraLoad[NUM_THREADS];
 extern float utilization_share[NUM_THREADS];
 
 extern volatile uint32_t threadEffectivePeriod_ms[NUM_THREADS];

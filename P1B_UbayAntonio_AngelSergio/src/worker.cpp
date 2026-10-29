@@ -13,7 +13,7 @@ THD_FUNCTION(worker, arg)
     systime_t beginTime_i = chVTGetSystemTimeX();
     threadEffectivePeriod_ms[worker_ID] = TIME_I2MS(beginTime_i - lastBeginTime_i);
 
-    int niter = threadLoad[worker_ID] + aleatoryLoads[random(24)];
+    int niter = threadLoad[worker_ID] + currentExtraLoad[worker_ID];
     #if USE_DOUBLE
       double num = 10;
     #else

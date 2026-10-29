@@ -64,10 +64,10 @@ THD_FUNCTION(top, arg) {
     SerialUSB.println();
 
 
-    float estimations[NUM_THREADS] = {0., 0., 0., 0., 0.};
+    float estimations[NUM_THREADS] = {0., 0., 0., 0., 0., 0.};
 
     // Estimate the charge per iteration
-    for (int tid = 1; tid < NUM_THREADS-1; tid++){
+    for (int tid = 1; tid <= 3; tid++){
       if (threadLoad[tid] != 0){
         float runsPerWindow = CYCLE_MS / (float)threadPeriod_ms[tid];
         estimations[tid] = (float)sysLoad.threadLoad[tid].ticksPerCycle / runsPerWindow / threadLoad[tid];
@@ -75,7 +75,7 @@ THD_FUNCTION(top, arg) {
     }
 
     // Calculate the max value of the thread
-    for (int tid = 1; tid < NUM_THREADS-1; tid++){
+    for (int tid = 1; tid <= 3; tid++){
         int period = (int)threadPeriod_ms[tid];
   
         int max = maxThreadLoad[tid];
@@ -85,13 +85,25 @@ THD_FUNCTION(top, arg) {
         maxThreadLoad[tid] = max;
     }
 
-    int nextLoads[NUM_THREADS] = {0, 0, 0, 0, 0};
+    int nextLoads[NUM_THREADS] = {0, 0, 0, 0, 0, 0};
 
-    // Calculate the next load
-    for (int tid = 1; tid < NUM_THREADS-1; tid++){
-      threadLoad_t * idleThdLoad = &sysLoad.threadLoad[NUM_THREADS - 1];
-      float idleLoad = ((float)idleThdLoad->ticksPerCycle) / accumTicks;
-      float scaleFactor = OBJECTIVE_LOAD - 1 + idleLoad;
+    // Calculate the actual system load
+    threadLoad_t * idleThdLoad = &sysLoad.threadLoad[NUM_THREADS - 1];
+    float idleLoad = ((float)idleThdLoad->ticksPerCycle) / accumTicks;
+    float actualLoad = 1.0f - idleLoad;
+
+    // Define the dead band limits (84% to 86%)
+    float lowerBound = OBJECTIVE_LOAD - 0.01f; // 0.84
+    float upperBound = OBJECTIVE_LOAD + 0.01f; // 0.86
+
+    // Calculate the scale factor only if it exit the dead band
+    float scaleFactor = 0.0f;
+    if (actualLoad < lowerBound || actualLoad > upperBound) {
+      scaleFactor = OBJECTIVE_LOAD - actualLoad;
+    }
+
+    // Calculate the following workload for each worker
+    for (int tid = 1; tid <= 3; tid++){
       int load = threadLoad[tid] + threadLoad[tid] * scaleFactor;
       load = (load < minThreadLoad[tid]) ? minThreadLoad[tid] : load;
       load = (load > maxThreadLoad[tid]) ? maxThreadLoad[tid] : load;
@@ -102,14 +114,13 @@ THD_FUNCTION(top, arg) {
     float worker2Load = (float)(nextLoads[2] * estimations[2]) / threadPeriod_ms[2];
     float worker3Load = (float)(nextLoads[3] * estimations[3]) / threadPeriod_ms[3]; 
 
-    // Satisfy load restriction
-    while((worker1Load + worker2Load + worker3Load) > OBJECTIVE_LOAD) {
-      float factor = OBJECTIVE_LOAD / (worker1Load + worker2Load + worker3Load);
+    // Satisfy the load constraint (using `upperBound` so as not to interfere with the 85–86% range)
+    while((worker1Load + worker2Load + worker3Load) > upperBound) {
+      float factor = upperBound / (worker1Load + worker2Load + worker3Load);
       for (int i=1; i < 4; i++){
         int load = nextLoads[i] * factor;
         load = (load < minThreadLoad[i]) ? minThreadLoad[i] : load;
         nextLoads[i] = load;
-
       }
 
       worker1Load = (float)(nextLoads[1] * estimations[1]) / threadPeriod_ms[1];
