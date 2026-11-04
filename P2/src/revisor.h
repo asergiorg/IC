@@ -3,7 +3,6 @@
 
 #include <Arduino.h>
 
-void prepareShell();
 String readKeyboard() ;
 void proccessCommand(String command);
 void sendUsCommand(String command);

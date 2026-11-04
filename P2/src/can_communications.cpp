@@ -1,5 +1,4 @@
 #include "can_communications.h"
-#include <CAN.h>
 
 void send(uint32_t data) {
     CAN.beginPacket(0x12);

@@ -5,10 +5,6 @@
 
 #define MAX_TOKENS 4
 
-void prepareShell() {
-  Serial.print("$ ");
-}
-
 String readKeyboard() {
   if(!Serial.available()) {
     return String();
@@ -21,7 +17,6 @@ String readKeyboard() {
 void proccessCommand(String command) {
   if (command == "") {
     Serial.println();
-    prepareShell();
   }
   if (command == "help") {
     printHelpCommand();
