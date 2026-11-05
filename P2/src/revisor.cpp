@@ -15,39 +15,7 @@ String readKeyboard() {
   return command;
 }
 
-void proccessCommand(String command) {
-  if (command == "") {
-    Serial.println();
-  }
-  if (command == "help") {
-    printHelpCommand();
-  } else if (command == "us") {
-    sendUsCommand(command);
-    readResponse(read());
-  } else{
-    printErrorMessage(0);
-  }
-}
-
-void sendUsCommand(String command){
-  command.trim();
-  String separatedCommand[MAX_TOKENS];
-  int numberOfTokens = separate(command, separatedCommand, MAX_TOKENS);
-  uint32_t message;
-  bool messageComplete = true;
-
-  for (int index=0; index < numberOfTokens; index++){
-    if(!classifyToken(separatedCommand[index], index, message)) {
-      printErrorMessage(0);
-      messageComplete = false;
-      break;
-    }
-  }
-
-  if (messageComplete) send(message);
-}
-
-uint32_t classifyToken(const String &token, int index, uint32_t message){
+bool classifyToken(const String &token, int index, uint32_t message) {
   // Operation code
   if (index == 0){
     if (token != "us") return false;
@@ -74,6 +42,38 @@ uint32_t classifyToken(const String &token, int index, uint32_t message){
   return false;
 }
 
+void sendUsCommand(String command){
+  command.trim();
+  String separatedCommand[MAX_TOKENS];
+  int numberOfTokens = separate(command, separatedCommand, MAX_TOKENS);
+  uint32_t message;
+  bool messageComplete = true;
+
+  for (int index=0; index < numberOfTokens; index++){
+    if(!classifyToken(separatedCommand[index], index, message)) {
+      printErrorMessage(0);
+      messageComplete = false;
+      break;
+    }
+  }
+
+  //if (messageComplete) send(message);
+}
+
+void proccessCommand(String command) {
+  if (command == "") {
+    Serial.println();
+  }
+  if (command == "help") {
+    printHelpCommand();
+  } else if (command == "us") {
+    sendUsCommand(command);
+    //readResponse(read());
+  } else{
+    printErrorMessage(0);
+  }
+}
+
 void readResponse(uint32_t message) {
   String operation = ((u_int8_t)(message >> 24) == 1) ? "us" : "help";
   uint8_t sensor = (message >> 16) & 0xFF;
@@ -89,4 +89,3 @@ void readResponse(uint32_t message) {
     Serial.println(data + "succesfully executed on sensor " + sensor);
   }
 }
-
