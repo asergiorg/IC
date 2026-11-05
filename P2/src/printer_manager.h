@@ -1,5 +1,5 @@
-#ifndef MESSAGE_PRINTER_H
-#define MESSAGE_PRINTER_H
+#ifndef PRINTER_MANAGER_H
+#define PRINTER_MANAGER_H
 
 #include <Arduino.h>
 

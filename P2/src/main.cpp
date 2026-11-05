@@ -1,6 +1,6 @@
 #include <CAN.h>
 #include "revisor.h"
-#include "message_printer.h"
+#include "printer_manager.h"
 
 #define REVISOR true
 
@@ -20,7 +20,6 @@ void loop() {
     prepareShell();
     String command = readKeyboard();
     proccessCommand(command);
-
   #else
   #endif
 }
