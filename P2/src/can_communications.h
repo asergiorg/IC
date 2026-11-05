@@ -5,5 +5,6 @@
 #include <CAN.h>
 
 void send(uint32_t message);
+uint32_t read();
 
 #endif
