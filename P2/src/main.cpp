@@ -7,6 +7,7 @@
 void setup() {
   Serial.begin(9600);
   while (!Serial);
+  prepareShell();
 
   // start the CAN bus at 500 kbps
   if (!CAN.begin(500E3)) {
@@ -17,9 +18,11 @@ void setup() {
 
 void loop() {
   #if REVISOR
-    prepareShell();
     String command = readKeyboard();
+    if (command.length() == 0) return;
+
     proccessCommand(command);
+    prepareShell();
   #else
   #endif
 }
