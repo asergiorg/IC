@@ -1,7 +1,8 @@
 #include <Arduino.h>
 #include "string_manipulation.h"
-#include "message_printer.h"
+#include "printer_manager.h"
 #include "can_communications.h"
+#include "token_classifyer.h"
 
 #define MAX_TOKENS 4
 
@@ -22,6 +23,7 @@ void proccessCommand(String command) {
     printHelpCommand();
   } else if (command == "us") {
     sendUsCommand(command);
+    readResponse(read());
   } else{
     printErrorMessage(0);
   }
@@ -53,32 +55,38 @@ uint32_t classifyToken(const String &token, int index, uint32_t message){
     return true;
   }
 
-  // First parametre
-  bool firstParametre = token == "one-shot" || token == "on" || token == "off" || token == "unit" || token == "delay" || token == "status";
+  // First parameter
+  bool firstParameter = token == "one-shot" || token == "on" || token == "off" || token == "unit" || token == "delay" || token == "status";
   if (index == 2){
-    if (!firstParametre) return false;
-    if (token == "one-shot") message |= 8UL << 12;
-    else if (token == "on") message |= 1UL << 12;
-    else if (token == "off") message |= 14UL << 12;
-    else if (token == "unit") message |= 7UL << 12;
-    else if (token == "delay") message |= 4UL << 12;
-    else if (token == "status") message |= 13UL << 12;
+    if (!firstParameter) return false;
+    message |= getFirstParameterValue(token);
     return true;
   }
 
-  // Second parametre
-  bool secondParametre = token == "ms" || token == "inc" || token == "cm";
+  // Second parameter
+  bool secondParameter = token == "ms" || token == "inc" || token == "cm";
   if (index == 3) {
-    if (!isNumber(token) && !secondParametre) return false;
-    if (token == "inc") message |= 1UL << 7;
-    else if (token == "cm") message |= 2UL << 7;
-    else if (token == "ms") message |= 3UL << 7;
-  
-    // Period/delay in ms
-    else if (isNumber(token)) message |= (uint32_t)token.toInt();
-
+    if (!isNumber(token) && !secondParameter) return false;
+    message |= getSecondParameterValue(token);
     return true;
   }
   
   return false;
 }
+
+void readResponse(uint32_t message) {
+  String operation = ((u_int8_t)(message >> 24) == 1) ? "us" : "help";
+  uint8_t sensor = (message >> 16) & 0xFF;
+  uint8_t error = (message >> 11) & 0x1;
+  String firstParameter = getFirstParameter(message >> 12 & 0xF);
+  String secondParameter = getSecondParameter(message >> 8 & 0x7);
+
+  String data = operation + " " + firstParameter + " " + secondParameter;
+  if (error){
+    Serial.println(data + "went wrong on sensor: " + sensor);
+    printErrorMessage(message & 0xF);
+  } else {
+    Serial.println(data + "succesfully executed on sensor " + sensor);
+  }
+}
+
