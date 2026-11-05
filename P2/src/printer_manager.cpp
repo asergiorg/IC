@@ -1,4 +1,4 @@
-#include "message_printer.h"
+#include "printer_manager.h"
 
 void prepareShell() {
   Serial.print("$ ");
@@ -21,7 +21,7 @@ void printHelpCommand(){
 void printErrorMessage(int errorId){
   switch (errorId) {
   case 0:
-      Serial.println("Command not fount.");
+      Serial.println("Command not found.");
       Serial.println("Type \"help\" to learn more about available commands.");
     break;
   
