@@ -17,7 +17,7 @@ int separate(String command, String separatedCommand[], int max) {
     }
   }
 
-  return index+1;
+  return index;
 }
 
 bool isNumber(const String &token) {
