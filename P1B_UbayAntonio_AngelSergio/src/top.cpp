@@ -13,15 +13,13 @@ THD_FUNCTION(top, arg) {
   memset(&sysLoad, 0, sizeof(sysLoad));
 
   systime_t lastTime_i = 0;
-  systime_t period_i = TIME_MS2I(CYCLE_MS);
+  systime_t period_i = TIME_MS2I(TOP_PERIOD_MS);
 
   // Reset top_sem as "taken"
   chBSemReset(&top_sem, true);
 
   while (!chThdShouldTerminateX()) {
 
-    // Wait a certain amount of time
-    // chThdSleepMilliseconds(CYCLE_MS);
     systime_t deadline_i = lastTime_i + period_i;
     if (deadline_i > chVTGetSystemTimeX()) {
       chBSemWaitTimeout(&top_sem, sysinterval_t(deadline_i - chVTGetSystemTimeX()));
@@ -64,22 +62,23 @@ THD_FUNCTION(top, arg) {
     SerialUSB.println();
 
 
-    float estimations[NUM_THREADS] = {0., 0., 0., 0., 0., 0.};
+    float timeEstimatedPerIteration[NUM_THREADS] = {0., 0., 0., 0., 0., 0.};
 
-    // Estimate the charge per iteration
-    for (int tid = 1; tid <= 3; tid++){
-      if (threadLoad[tid] != 0){
-        float runsPerWindow = CYCLE_MS / (float)threadPeriod_ms[tid];
-        estimations[tid] = (float)sysLoad.threadLoad[tid].ticksPerCycle / runsPerWindow / threadLoad[tid];
+    // Estimate the charge of time per iteration
+    for (int tid = 1; tid <= 3; tid++) {
+      if (threadLoad[tid] != 0) {
+        float repetitionsPerWindow = TOP_PERIOD_MS / (float)threadPeriod_ms[tid];
+        float timePerRepetition = (float)sysLoad.threadLoad[tid].ticksPerCycle / repetitionsPerWindow;
+        timeEstimatedPerIteration[tid] = timePerRepetition / threadLoad[tid];
       }
     }
 
     // Calculate the max value of the thread
-    for (int tid = 1; tid <= 3; tid++){
+    for (int tid = 1; tid <= 3; tid++) {
         int period = (int)threadPeriod_ms[tid];
   
         int max = maxThreadLoad[tid];
-        float cost = estimations[tid];
+        float cost = timeEstimatedPerIteration[tid];
         if (cost > 0) max = utilization_share[tid] * period / cost; 
   
         maxThreadLoad[tid] = max;
@@ -103,16 +102,16 @@ THD_FUNCTION(top, arg) {
     }
 
     // Calculate the following workload for each worker
-    for (int tid = 1; tid <= 3; tid++){
+    for (int tid = 1; tid <= 3; tid++) {
       int load = threadLoad[tid] + threadLoad[tid] * scaleFactor;
       load = (load < minThreadLoad[tid]) ? minThreadLoad[tid] : load;
       load = (load > maxThreadLoad[tid]) ? maxThreadLoad[tid] : load;
       nextLoads[tid] = load;
     }
 
-    float worker1Load = (float)(nextLoads[1] * estimations[1]) / threadPeriod_ms[1];
-    float worker2Load = (float)(nextLoads[2] * estimations[2]) / threadPeriod_ms[2];
-    float worker3Load = (float)(nextLoads[3] * estimations[3]) / threadPeriod_ms[3]; 
+    float worker1Load = (float)(nextLoads[1] * timeEstimatedPerIteration[1]) / threadPeriod_ms[1];
+    float worker2Load = (float)(nextLoads[2] * timeEstimatedPerIteration[2]) / threadPeriod_ms[2];
+    float worker3Load = (float)(nextLoads[3] * timeEstimatedPerIteration[3]) / threadPeriod_ms[3]; 
 
     // Satisfy the load constraint (using `upperBound` so as not to interfere with the 85–86% range)
     while((worker1Load + worker2Load + worker3Load) > upperBound) {
@@ -123,13 +122,13 @@ THD_FUNCTION(top, arg) {
         nextLoads[i] = load;
       }
 
-      worker1Load = (float)(nextLoads[1] * estimations[1]) / threadPeriod_ms[1];
-      worker2Load = (float)(nextLoads[2] * estimations[2]) / threadPeriod_ms[2];
-      worker3Load = (float)(nextLoads[3] * estimations[3]) / threadPeriod_ms[3];
+      worker1Load = (float)(nextLoads[1] * timeEstimatedPerIteration[1]) / threadPeriod_ms[1];
+      worker2Load = (float)(nextLoads[2] * timeEstimatedPerIteration[2]) / threadPeriod_ms[2];
+      worker3Load = (float)(nextLoads[3] * timeEstimatedPerIteration[3]) / threadPeriod_ms[3];
     }
 
     // Apply scale factor
-    for(int i = 1; i < 4; i++){
+    for(int i = 1; i < 4; i++) {
       threadLoad[i] = nextLoads[i];
     }
 

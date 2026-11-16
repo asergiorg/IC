@@ -16,7 +16,7 @@ char thread_name[NUM_THREADS][15] = {  "top",
                                        "worker_1", "worker_2", "worker_3",
                                        "disturber", "idle" };
 
-volatile uint32_t threadPeriod_ms[NUM_THREADS] = { CYCLE_MS, 200, 100, 200, 0, 0 };
+volatile uint32_t threadPeriod_ms[NUM_THREADS] = { TOP_PERIOD_MS, 200, 100, 200, 0, 0 };
 volatile int threadLoad[NUM_THREADS] = { 0, 50, 50, 50, 0, 0 };
 
 int minThreadLoad[NUM_THREADS] = { 0, 1, 1, 1, 0, 0 };

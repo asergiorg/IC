@@ -6,7 +6,7 @@
 //------------------------------------------------------------------------------
 #define USE_DOUBLE    TRUE   // Change to TRUE to use double precision (heavier)
 
-#define CYCLE_MS      1000
+#define TOP_PERIOD_MS      1000
 #define NUM_THREADS   6  // Three working threads + loadEstimator (top) +
                          // disturber + loop (as the idle thread) 
                          // TOP thread is thread with id 0
