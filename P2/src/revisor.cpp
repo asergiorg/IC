@@ -16,6 +16,7 @@ String readKeyboard() {
 }
 
 bool classifyToken(const String &token, int index, uint32_t message) {
+  Serial.println(token);
   // Operation code
   if (index == 0){
     if (token != "us") return false;
@@ -38,7 +39,7 @@ bool classifyToken(const String &token, int index, uint32_t message) {
     message |= getSecondParameterValue(token);
     return true;
   }
-  
+
   return false;
 }
 
@@ -60,7 +61,7 @@ void sendUsCommand(String command){
   //if (messageComplete) send(message);
 }
 
-void proccessCommand(String command) {
+void processCommand(String command) {
   if (command == "") {
     Serial.println();
   }

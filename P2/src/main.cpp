@@ -21,7 +21,7 @@ void loop() {
     String command = readKeyboard();
     if (command.length() == 0) return;
 
-    proccessCommand(command);
+    processCommand(command);
     prepareShell();
   #else
   #endif
