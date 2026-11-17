@@ -1,10 +1,11 @@
 #include <Arduino.h>
 #include "revisor.h"
+#include "frame_decoder.h"
+#include "response_queue.h"
 #include "string_manipulation.h"
 #include "printer_manager.h"
 #include "can_communications.h"
 #include "token_classifyer.h"
-#include "response_queue.h"
 
 #define MAX_TOKENS 4
 
@@ -43,83 +44,97 @@ bool readKeyboard(String &line) {
 }
 
 bool classifyToken(const String &token, int index, uint32_t &message) {
-  // Operation code
-  if (index == 0){
-    if (token != "us") return false;
-    message |= 8UL << 12;
-    return true;
-  }
+    switch (index) {
+        case 0:
+            if (token != "us") return false;
+            message |= getOperationValue(token);
+            return true;
 
-  // First parameter
-  bool firstParameter = token == "one-shot" || token == "on" || token == "off" || token == "unit" || token == "delay" || token == "status";
-  if (index == 2){
-    if (!firstParameter) return false;
-    message |= getFirstParameterValue(token);
-    return true;
-  }
+        case 1: {
+            if (!isNumber(token)) return false;
+            long sensor = token.toInt();
+            if (sensor < 0 || sensor > 255) return false;
+            message |= getSensorValue((uint8_t)sensor);
+            return true;
+        }
 
-  // Second parameter
-  bool secondParameter = token == "ms" || token == "inc" || token == "cm";
-  if (index == 3) {
-    if (!isNumber(token) && !secondParameter) return false;
-    message |= getSecondParameterValue(token);
-    return true;
-  }
+        case 2: {
+            bool valid = token == "one-shot" || token == "on" || token == "off" ||
+                        token == "unit" || token == "delay" || token == "status";
+            if (!valid) return false;
+            message |= getFirstParameterValue(token);
+            return true;
+        }
 
-  return false;
+        case 3: {
+            String first = getFirstParameter((message >> 12) & 0xF);
+
+            if (first == "on" || first == "delay") {
+                if (!isNumber(token)) return false;
+                long value = token.toInt();
+                if (value < 0 || value > 255) return false;
+                message |= getValueField((uint8_t)value);
+                return true;
+            }
+            if (first == "unit") {
+                if (token != "inc" && token != "cm" && token != "ms") return false;
+                message |= getSecondParameterValue(token);
+                return true;
+            }
+            return false;
+        }
+    }
+    return false;
 }
 
-void sendUsCommand(String command){
-  command.trim();
-  String separatedCommand[MAX_TOKENS];
-  int numberOfTokens = separate(command, separatedCommand, MAX_TOKENS);
-  uint32_t message = 0;
+static int expectedTokens(uint32_t message) {
+    String first = getFirstParameter((message >> 12) & 0xF);
+    if (first == "on" || first == "delay" || first == "unit") return 4;
+    return 3;
+}
 
-  for (int index=0; index < numberOfTokens; index++){
-    if(!classifyToken(separatedCommand[index], index, message)) {
-      printErrorMessage(0);
-      break;
+void sendUsCommand(String command) {
+    command.trim();
+    String separatedCommand[MAX_TOKENS];
+    int numberOfTokens = separate(command, separatedCommand, MAX_TOKENS);
+    uint32_t message = 0;
+
+    for (int index = 0; index < numberOfTokens; index++) {
+        if (!classifyToken(separatedCommand[index], index, message)) {
+        printErrorMessage(0);
+        return;
+        }
     }
-  }
+
+    if (numberOfTokens != expectedTokens(message)) {
+        printErrorMessage(0);
+        return;
+    }
+
+    send(message);
 }
 
 void processCommand(String command) {
-  if (command == "") {
-    return;
-  }
-  if (command == "help") {
-    printHelpCommand();
-  } else if (command.startsWith("us")) {
-    sendUsCommand(command);
-  } else {
-    printErrorMessage(0);
-  }
-}
-
-void readResponse(uint32_t message) {
-  String operation = ((uint8_t)(message >> 24) == 1) ? "us" : "help";
-  uint8_t sensor = (message >> 16) & 0xFF;
-  uint8_t error = (message >> 11) & 0x1;
-  String firstParameter = getFirstParameter(message >> 12 & 0xF);
-  String secondParameter = getSecondParameter(message >> 8 & 0x7);
-
-  String decodification = operation + " " + firstParameter + " " + secondParameter;
-  if (error){
-    Serial.println(decodification + " went wrong on sensor " + String(sensor));
-    printErrorMessage(message & 0xF);
-  } else {
-    Serial.println(decodification + " successfully executed on sensor " + String(sensor));
-  }
+    if (command == "") {
+        return;
+    }
+    if (command == "help") {
+        printHelpCommand();
+    } else if (command == "us" || command.startsWith("us ")) {
+        sendUsCommand(command);
+    } else {
+        printErrorMessage(0);
+    }
 }
 
 void printPendingResponses() {
-  uint32_t msg;
-  while (popResponse(msg)) {
-    readResponse(msg);
-  }
+    CanPacket packet;
+    while (popPacket(packet)) {
+        readResponse(packet);
+    }
 
-  uint16_t dropped = takeDroppedMessages();
-  if (dropped) {
-    Serial.println("Aviso: se perdieron " + String(dropped) + " mensajes CAN");
-  }
+    uint16_t dropped = takeDroppedMessages();
+    if (dropped) {
+        Serial.println("Aviso: se perdieron " + String(dropped) + " paquetes CAN");
+    }
 }

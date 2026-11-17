@@ -14,7 +14,6 @@ void setup() {
 
 void loop() {
   #if REVISOR
-    // Solo mostramos respuestas CAN si el usuario no está escribiendo
     if (!userIsTyping()) {
       printPendingResponses();
     }

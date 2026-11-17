@@ -3,12 +3,12 @@
 #include <CAN.h>
 
 static void onCanReceive(int packetSize) {
-    if (packetSize < 4) return;
-    uint32_t msg = 0;
-    for (int i = 0; i < 4; i++) {
-        msg = (msg << 8) | (uint8_t)CAN.read();
+    CanPacket packet;
+    packet.length = 0;
+    while (CAN.available() && packet.length < 8) {
+        packet.data[packet.length++] = (uint8_t)CAN.read();
     }
-    pushResponseFromISR(msg);
+    if (packet.length > 0) pushPacketFromISR(packet);
 }
 
 void canBegin() {
