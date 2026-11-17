@@ -1,22 +1,48 @@
 #include <Arduino.h>
+#include "revisor.h"
 #include "string_manipulation.h"
 #include "printer_manager.h"
 #include "can_communications.h"
 #include "token_classifyer.h"
+#include "response_queue.h"
 
 #define MAX_TOKENS 4
 
-String readKeyboard() {
-  if(!Serial.available()) {
-    return String();
-  }
-  String command = Serial.readStringUntil('\n');
-  command.trim();
-  return command;
+static String lineBuffer;
+
+bool userIsTyping() {
+  return lineBuffer.length() > 0;
 }
 
-bool classifyToken(const String &token, int index, uint32_t message) {
-  Serial.println(token);
+bool readKeyboard(String &line) {
+  while (Serial.available()) {
+    char c = Serial.read();
+
+    if (c == '\r') continue;
+
+    if (c == '\n') {
+      line = lineBuffer;
+      line.trim();
+      lineBuffer = "";
+      Serial.println();
+      return true;
+    }
+
+    if (c == 0x08 || c == 0x7F) {
+      if (lineBuffer.length() > 0) {
+        lineBuffer.remove(lineBuffer.length() - 1);
+        Serial.print("\b \b");
+      }
+      continue;
+    }
+
+    lineBuffer += c;
+    Serial.print(c);
+  }
+  return false;
+}
+
+bool classifyToken(const String &token, int index, uint32_t &message) {
   // Operation code
   if (index == 0){
     if (token != "us") return false;
@@ -47,46 +73,53 @@ void sendUsCommand(String command){
   command.trim();
   String separatedCommand[MAX_TOKENS];
   int numberOfTokens = separate(command, separatedCommand, MAX_TOKENS);
-  uint32_t message;
-  bool messageComplete = true;
+  uint32_t message = 0;
 
   for (int index=0; index < numberOfTokens; index++){
     if(!classifyToken(separatedCommand[index], index, message)) {
       printErrorMessage(0);
-      messageComplete = false;
       break;
     }
   }
-
-  //if (messageComplete) send(message);
 }
 
 void processCommand(String command) {
   if (command == "") {
-    Serial.println();
+    return;
   }
   if (command == "help") {
     printHelpCommand();
-  } else if (command == "us") {
+  } else if (command.startsWith("us")) {
     sendUsCommand(command);
-    //readResponse(read());
-  } else{
+  } else {
     printErrorMessage(0);
   }
 }
 
 void readResponse(uint32_t message) {
-  String operation = ((u_int8_t)(message >> 24) == 1) ? "us" : "help";
+  String operation = ((uint8_t)(message >> 24) == 1) ? "us" : "help";
   uint8_t sensor = (message >> 16) & 0xFF;
   uint8_t error = (message >> 11) & 0x1;
   String firstParameter = getFirstParameter(message >> 12 & 0xF);
   String secondParameter = getSecondParameter(message >> 8 & 0x7);
 
-  String data = operation + " " + firstParameter + " " + secondParameter;
+  String decodification = operation + " " + firstParameter + " " + secondParameter;
   if (error){
-    Serial.println(data + "went wrong on sensor: " + sensor);
+    Serial.println(decodification + " went wrong on sensor " + String(sensor));
     printErrorMessage(message & 0xF);
   } else {
-    Serial.println(data + "succesfully executed on sensor " + sensor);
+    Serial.println(decodification + " successfully executed on sensor " + String(sensor));
+  }
+}
+
+void printPendingResponses() {
+  uint32_t msg;
+  while (popResponse(msg)) {
+    readResponse(msg);
+  }
+
+  uint16_t dropped = takeDroppedMessages();
+  if (dropped) {
+    Serial.println("Aviso: se perdieron " + String(dropped) + " mensajes CAN");
   }
 }

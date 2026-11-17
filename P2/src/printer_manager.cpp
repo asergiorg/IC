@@ -1,9 +1,5 @@
 #include "printer_manager.h"
 
-void prepareShell() {
-  Serial.print("$ ");
-}
-
 void printHelpCommand(){
   Serial.println();
   Serial.println("Available commands:");

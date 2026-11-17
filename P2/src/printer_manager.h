@@ -3,7 +3,6 @@
 
 #include <Arduino.h>
 
-void prepareShell();
 void printHelpCommand();
 void printErrorMessage(int errorId);
 

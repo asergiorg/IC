@@ -1,28 +1,29 @@
-#include <CAN.h>
 #include "revisor.h"
 #include "printer_manager.h"
+#include "can_communications.h"
 
 #define REVISOR true
 
 void setup() {
   Serial.begin(9600);
   while (!Serial);
-  prepareShell();
 
-  // start the CAN bus at 500 kbps
-  if (!CAN.begin(500E3)) {
-    Serial.println("Starting CAN failed!");
-    while (1);
-  }
+  canBegin();
+  Serial.print("> ");
 }
 
 void loop() {
   #if REVISOR
-    String command = readKeyboard();
-    if (command.length() == 0) return;
+    // Solo mostramos respuestas CAN si el usuario no está escribiendo
+    if (!userIsTyping()) {
+      printPendingResponses();
+    }
 
-    processCommand(command);
-    prepareShell();
+    String line;
+    if (readKeyboard(line)) {
+      processCommand(line);
+      Serial.print("> ");
+    }
   #else
   #endif
 }

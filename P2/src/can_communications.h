@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include <CAN.h>
 
+void canBegin();
 void send(uint32_t message);
-uint32_t read();
 
 #endif
