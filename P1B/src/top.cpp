@@ -70,8 +70,15 @@ THD_FUNCTION(top, arg) {
         float repetitionsPerWindow = TOP_PERIOD_MS / (float)threadPeriod_ms[tid];
         float timePerRepetition = (float)sysLoad.threadLoad[tid].ticksPerCycle / repetitionsPerWindow;
         timeEstimatedPerIteration[tid] = timePerRepetition / threadLoad[tid];
+        SerialUSB.print("Hebra Nº ");
+        SerialUSB.print(tid);
+        SerialUSB.print(" tiene un tiempo estimado de ");
+        SerialUSB.print(timeEstimatedPerIteration[tid]);
+        SerialUSB.println("ms");
+
       }
     }
+    SerialUSB.println();
 
     // Calculate the max value of the thread
     for (int tid = 1; tid <= 3; tid++) {
