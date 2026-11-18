@@ -20,6 +20,9 @@ void printErrorMessage(int errorId){
       Serial.println("Command not found.");
       Serial.println("Type \"help\" to learn more about available commands.");
     break;
+  case 1: Serial.println("Sensor not found."); break;
+  case 2: Serial.println("Invalid value."); break;
+  case 3: Serial.println("I2C communication error."); break;
   
   default:
     break;

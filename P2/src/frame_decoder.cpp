@@ -54,9 +54,9 @@ static void readFrameDelimiter(const CanPacket &p) {
     uint8_t blocks = p.data[1];
 
     if (marker == FRAME_START) {
-        if (inFrame) Serial.println("Aviso: inicio de trama sin haber cerrado la anterior");
+        if (inFrame) Serial.println("Warning: frame starting without ending the previous one");
         if (type < FRAME_ONE_SHOT) {
-            Serial.println("Aviso: tipo de trama desconocido");
+            Serial.println("Warning: unknown type of frame");
             resetFrameState();
             return;
         }
@@ -64,29 +64,29 @@ static void readFrameDelimiter(const CanPacket &p) {
         frameType = type;
         expectedBlocks = blocks;
         receivedBlocks = 0;
-        Serial.println(String("[") + frameName(type) + "] " + String(blocks) + " bloque(s):");
+        Serial.println(String("[") + frameName(type) + "] " + String(blocks) + " block(s):");
 
     } else if (marker == FRAME_END) {
         if (!inFrame) {
-            Serial.println("Aviso: final de trama sin inicio");
+            Serial.println("Warning: ending frame without starting");
             return;
         }
-        if (type != frameType) Serial.println("Aviso: el tipo del final no coincide con el del inicio");
+        if (type != frameType) Serial.println("Warning: type ending frame does not match with the type of the starting frame");
         if (blocks != receivedBlocks || blocks != expectedBlocks) {
-            Serial.println("Aviso: se esperaban " + String(expectedBlocks) +
-                            " bloques, llegaron " + String(receivedBlocks) +
-                            " (el final indica " + String(blocks) + ")");
+            Serial.println("Warning: expected " + String(expectedBlocks) +
+                            " blocks, received " + String(receivedBlocks) +
+                            " (ending frame indicates " + String(blocks) + ")");
         }
         resetFrameState();
 
     } else {
-        Serial.println("Aviso: marcador de trama desconocido");
+        Serial.println("Warning: unknown frame indicator");
     }
 }
 
 static void readDataBlock(const CanPacket &p) {
     if (!inFrame) {
-        Serial.println("Aviso: bloque de datos recibido fuera de una trama");
+        Serial.println("Warning: data blocks received out of frame");
         return;
     }
     receivedBlocks++;
@@ -95,6 +95,7 @@ static void readDataBlock(const CanPacket &p) {
     if (frameType == FRAME_STATUS) {
         if (p.length != 6) {
             Serial.println("Aviso: bloque de status con tamaño incorrecto");
+            Serial.println("Warning: wrong status block size");
             return;
         }
         uint16_t i2c = ((uint16_t)p.data[1] << 8) | p.data[2];
@@ -105,12 +106,12 @@ static void readDataBlock(const CanPacket &p) {
 
         Serial.println("  Sensor " + String(sensor) +
                     " | I2C 0x" + String(i2c, HEX) +
-                    " | retardo minimo " + String(minDelay) +
+                    " | minimum delay " + String(minDelay) +
                     " | F=" + String(flagF) +
-                    " | periodo " + String(period) + " " + getSecondParameter(unit));
+                    " | period " + String(period) + " " + getSecondParameter(unit) + " ms");
     } else {
         if (p.length != 3) {
-            Serial.println("Aviso: bloque de medicion con tamaño incorrecto");
+            Serial.println("Warning: wrong medition block size");
             return;
         }
         uint8_t  unit = p.data[1] >> 6;
@@ -128,6 +129,6 @@ void readResponse(const CanPacket &p) {
         case 3:
         case 6:  readDataBlock(p);       break;
         default:
-        Serial.println("Aviso: paquete CAN de " + String(p.length) + " bytes no reconocido");
+        Serial.println("Warning: CAN packet of " + String(p.length) + " non-recognize bytes");
     }
 }

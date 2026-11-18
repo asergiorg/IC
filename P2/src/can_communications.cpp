@@ -13,7 +13,7 @@ static void onCanReceive(int packetSize) {
 
 void canBegin() {
     if (!CAN.begin(500E3)) {
-        Serial.println("Error iniciando CAN");
+        Serial.println("Could not initiate CAN");
         while (1);
     }
     CAN.onReceive(onCanReceive);

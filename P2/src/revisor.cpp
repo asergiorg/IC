@@ -87,10 +87,12 @@ bool classifyToken(const String &token, int index, uint32_t &message) {
     return false;
 }
 
-static int expectedTokens(uint32_t message) {
-    String first = getFirstParameter((message >> 12) & 0xF);
-    if (first == "on" || first == "delay" || first == "unit") return 4;
-    return 3;
+static bool isValidTokenCount(uint32_t message, int numberOfTokens) {
+  if (numberOfTokens == 1) return true;
+
+  String first = getFirstParameter((message >> 12) & 0xF);
+  if (first == "on" || first == "delay" || first == "unit") return numberOfTokens == 4;
+  return numberOfTokens == 3;
 }
 
 void sendUsCommand(String command) {
@@ -106,7 +108,7 @@ void sendUsCommand(String command) {
         }
     }
 
-    if (numberOfTokens != expectedTokens(message)) {
+    if (isValidTokenCount(message, numberOfTokens)) {
         printErrorMessage(0);
         return;
     }
@@ -135,6 +137,6 @@ void printPendingResponses() {
 
     uint16_t dropped = takeDroppedMessages();
     if (dropped) {
-        Serial.println("Aviso: se perdieron " + String(dropped) + " paquetes CAN");
+        Serial.println("Warning: " + String(dropped) + " CAN packets lost");
     }
 }
