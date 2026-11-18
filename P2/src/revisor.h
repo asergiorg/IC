@@ -4,12 +4,13 @@
 #include <Arduino.h>
 #include "response_queue.h"
 
-bool userIsTyping();
+#define RESPONSE_TIMEOUT_MS 500
+
 bool readKeyboard(String &line);
-bool classifyToken(const String &token, int index, uint32_t &message);
-static int expectedTokens(uint32_t message);
-void sendUsCommand(String command);
-void processCommand(String command);
+bool userIsTyping();
+bool processCommand(String command);
 void printPendingResponses();
+void requestPrompt(uint32_t delayMs);
+void updatePrompt();
 
 #endif

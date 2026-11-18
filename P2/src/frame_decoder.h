@@ -6,5 +6,6 @@
 
 void readResponse(const CanPacket &packet);
 void resetFrameState();
+bool frameInProgress();
 
 #endif

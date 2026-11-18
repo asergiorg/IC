@@ -9,7 +9,9 @@ void setup() {
   while (!Serial);
 
   canBegin();
-  Serial.print("> ");
+  #if REVISOR
+    requestPrompt(0);
+  #endif
 }
 
 void loop() {
@@ -20,9 +22,11 @@ void loop() {
 
     String line;
     if (readKeyboard(line)) {
-      processCommand(line);
-      Serial.print("> ");
+      bool sent = processCommand(line);
+      requestPrompt(sent ? RESPONSE_TIMEOUT_MS : 0);
     }
+
+    updatePrompt();
   #else
   #endif
 }
